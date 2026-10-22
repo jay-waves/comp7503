@@ -1,0 +1,33 @@
+# Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data and dependencies
+node-red/data/
+node_modules/
+
+# Logs and backups
+*.log
+*.bak
+*.backup
+backups/
+*.swp
+*.swo
+*~
+tmp/
+temp/
+
+# Local tool settings and OS files
+.agents/
+.codex/
+.aws/
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Download artifacts (HKO.Flow.json currently contains a Moodle login page)
+/HKO.Flow.json
+/curl_response
