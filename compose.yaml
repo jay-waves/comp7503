@@ -10,12 +10,14 @@ services:
       - "127.0.0.1:1880:1880"
     environment:
       TZ: Asia/Shanghai
+      FLOWS: flows.json
       MONGODB_URI: mongodb://${MONGO_ROOT_USERNAME:?Run bash start.sh first}:${MONGO_ROOT_PASSWORD:?Run bash start.sh first}@mongodb:27017/comp7503?authSource=admin
     depends_on:
       mongodb:
         condition: service_healthy
     volumes:
       - ./node-red/data:/data:Z
+      - ./scripts:/opt/comp7503/scripts:ro,Z
     logging:
       driver: json-file
       options:

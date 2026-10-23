@@ -7,6 +7,7 @@ WORKDIR /usr/src/node-red
 RUN npm install --omit=dev --no-audit --no-fund \
         @flowfuse/node-red-dashboard \
         node-red-contrib-mongodb4@3.4.0 \
+        adm-zip@0.6.1 \
     && npm cache clean --force
 
 ENV TZ=Asia/Shanghai

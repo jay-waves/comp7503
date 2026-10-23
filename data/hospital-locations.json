@@ -1,0 +1,114 @@
+{
+  "sourceUrl": "https://www.ha.org.hk/opendata/facility-hosp.json",
+  "retrievedAt": "2026-10-23T08:34:21.902468+00:00",
+  "hospitals": {
+    "Pamela Youde Nethersole Eastern Hospital": {
+      "lat": 22.26918,
+      "lon": 114.23643,
+      "cluster": "Hong Kong Island Cluster",
+      "address": "3 Lok Man Road, Chai Wan, HK"
+    },
+    "Queen Mary Hospital": {
+      "lat": 22.2704,
+      "lon": 114.13117,
+      "cluster": "Hong Kong Island Cluster",
+      "address": "102 Pokfulam Road, HK"
+    },
+    "Ruttonjee Hospital": {
+      "lat": 22.275909,
+      "lon": 114.17529,
+      "cluster": "Hong Kong Island Cluster",
+      "address": "266 Queen's Road East, Wan Chai, HK"
+    },
+    "St. John Hospital": {
+      "lat": 22.208059,
+      "lon": 114.03151,
+      "cluster": "Hong Kong Island Cluster",
+      "address": "Cheung Chau Hospital Road, Tung Wan, Cheung Chau"
+    },
+    "Kwong Wah Hospital": {
+      "lat": 22.31429,
+      "lon": 114.1721,
+      "cluster": "Kowloon Central Cluster",
+      "address": "25 Waterloo Road, KLN"
+    },
+    "Queen Elizabeth Hospital": {
+      "lat": 22.30886,
+      "lon": 114.17519,
+      "cluster": "Kowloon Central Cluster",
+      "address": "30 Gascoigne Road, KLN"
+    },
+    "Tseung Kwan O Hospital": {
+      "lat": 22.317964,
+      "lon": 114.27021,
+      "cluster": "Kowloon East Cluster",
+      "address": "No. 2 Po Ning Lane, Hang Hau, Tseung Kwan O"
+    },
+    "United Christian Hospital": {
+      "lat": 22.322291,
+      "lon": 114.2279,
+      "cluster": "Kowloon East Cluster",
+      "address": "130 Hip Wo Street, Kwun Tong, KLN"
+    },
+    "Caritas Medical Centre": {
+      "lat": 22.340629,
+      "lon": 114.15231,
+      "cluster": "Kowloon West Cluster",
+      "address": "111 Wing Hong Street, Sham Shui Po, KLN"
+    },
+    "North Lantau Hospital": {
+      "lat": 22.282571,
+      "lon": 113.93914,
+      "cluster": "Kowloon West Cluster",
+      "address": "8 Chung Yan Road, Tung Chung, Lantau Island"
+    },
+    "Princess Margaret Hospital": {
+      "lat": 22.340057,
+      "lon": 114.1347,
+      "cluster": "Kowloon West Cluster",
+      "address": "2-10 Princess Margaret Hospital Road, Kwai Chung, New Territories"
+    },
+    "Yan Chai Hospital": {
+      "lat": 22.369548,
+      "lon": 114.11956,
+      "cluster": "Kowloon West Cluster",
+      "address": "7-11 Yan Chai Street, Tsuen Wan, NT"
+    },
+    "Alice Ho Miu Ling Nethersole Hospital": {
+      "lat": 22.458696,
+      "lon": 114.17479,
+      "cluster": "New Territories East Cluster",
+      "address": "11 Chuen On Road, Tai Po, NT"
+    },
+    "North District Hospital": {
+      "lat": 22.496832,
+      "lon": 114.12456,
+      "cluster": "New Territories East Cluster",
+      "address": "9 Po Kin Road, Sheung Shui, New Territories"
+    },
+    "Prince of Wales Hospital": {
+      "lat": 22.379939,
+      "lon": 114.20129,
+      "cluster": "New Territories East Cluster",
+      "address": "30-32 Ngan Shing Street, Shatin, NT"
+    },
+    "Pok Oi Hospital": {
+      "lat": 22.44523,
+      "lon": 114.04159,
+      "cluster": "New Territories West Cluster",
+      "address": "Au Tau, Yuen Long, NT"
+    },
+    "Tin Shui Wai Hospital": {
+      "lat": 22.458704,
+      "lon": 113.99585,
+      "cluster": "New Territories West Cluster",
+      "address": "11 Tin Tan Street, Tin Shui Wai, NT"
+    },
+    "Tuen Mun Hospital": {
+      "lat": 22.40708,
+      "lon": 113.97621,
+      "cluster": "New Territories West Cluster",
+      "address": "23 Tsing Chung Koon Road, Tuen Mun, NT"
+    }
+  }
+}
