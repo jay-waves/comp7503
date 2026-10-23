@@ -50,7 +50,7 @@ export default {
   data() { return {
     metric: 't45p50', clock: Date.now(), timer: null,
     mapError:'', mapReady:false, selectedName:null,
-    legend:[{label:'Under 60 min',color:'#087e8b'},{label:'60–179 min',color:'#d49c16'},{label:'180–359 min',color:'#df7025'},{label:'360+ min',color:'#bd3245'},{label:'Unknown',color:'#7d8792'}],
+    legend:[{label:'Under 60 min',color:'#087e8b'},{label:'60–89 min',color:'#4e9da5'},{label:'90–119 min',color:'#8eaa64'},{label:'120–179 min',color:'#d49c16'},{label:'180–359 min',color:'#df7025'},{label:'360+ min',color:'#bd3245'},{label:'Unknown',color:'#7d8792'}],
     metrics: [
       {key:'t3p50', label:'III · Urgent · P50'},
       {key:'t3p95', label:'III · Urgent · P95'},
@@ -102,11 +102,15 @@ export default {
     },
     markerColor(value) {
       const n=this.minutes(value)
-      return n===null?'#7d8792':n<60?'#087e8b':n<180?'#d49c16':n<360?'#df7025':'#bd3245'
+      return n===null?'#7d8792':n<60?'#087e8b':n<90?'#4e9da5':n<120?'#8eaa64':n<180?'#d49c16':n<360?'#df7025':'#bd3245'
     },
     refreshMarkers() {
       if(!this._markers)return
       this._markers.clearLayers()
+      if(!this.selectedName && this.mappedHospitals.length){
+        const initial=this.mappedHospitals.find(r=>r.hospName==='Queen Elizabeth Hospital') || this.mappedHospitals[0]
+        this.selectedName=initial.hospName
+      }
       for(const r of this.mappedHospitals){
         const label=document.createElement('span')
         label.textContent=r.hospName+': '+(r[this.metric] || 'Not available')
