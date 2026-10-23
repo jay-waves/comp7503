@@ -1,0 +1,15 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const load=f=>fs.readFileSync(f,'utf8');
+const def=new Function(load('dashboards/hospital-overview.vue').match(/<script>([\s\S]*?)<\/script>/)[1].replace('export default','return'))();
+const c={...def.data()};for(const [k,f]of Object.entries(def.methods))c[k]=f.bind(c);for(const [k,f]of Object.entries(def.computed))Object.defineProperty(c,k,{get:f.bind(c)});
+const hospitals=JSON.parse(load('data/hospital-locations.json')).hospitals;
+const data={waitTime:[{hospName:'Queen Elizabeth Hospital',t1wt:'0 minute',t2wt:'less than 15 minutes',t45p50:'1 hour'}],locations:hospitals};
+def.watch.msg.handler.call(c,{payload:data});def.watch.mappedHospitals.handler.call(c,c.mappedHospitals);
+assert.equal(c.selectedHospital.t1wt,'0 minute');assert.equal(c.selectedName,'Queen Elizabeth Hospital');
+def.watch.msg.handler.call(c,{topic:'ha-chart-metric',payload:'t3p50'});assert.equal(c.mappedHospitals.length,1);
+const cache=new Map([['haChartView',data]]),flow={get:k=>cache.get(k)};
+const history=new Function('msg','flow',load('scripts/hospital-history-result.js'))({payload:[],historyWindow:{start:'a',end:'b'}},flow);assert.equal(history.raw,data);
+const query=new Function('msg',load('scripts/hospital-live-query.js'));assert.equal(query({topic:'ha-chart-metric'}),null);assert.equal(query({topic:'ha-overview-request'}).payload[0][1].$limit,1);
+const template=load('dashboards/hospital-regional-comparison.vue');assert(!template.includes('History checked:'));assert(!template.includes('liveView?.updateTime'));
+assert(!load('dashboards/hospital-heatmap.vue').includes('Query updated:'));
+console.log('PASS: latest snapshot restore, selection without map, outgoing messages retain data, history refresh retains live data, unified timestamps');

@@ -46,11 +46,11 @@ Implemented:
 - Startup collection followed by A&E polling every 900 seconds and SOP checks every 86400 seconds.
 - HTTP/schema checks and explicit conversion of Hong Kong source timestamps.
 - Idempotent MongoDB upserts and SOP row-level revision preservation.
-- An English dashboard with an interactive hospital map and horizontal bar chart and a detailed ranking table. The selected metric controls both sorting and bar lengths: III or IV/V, P50 or P95. Hours are converted to minutes for a common bar scale; labels retain original values.
+- An English dashboard with an interactive hospital map, a Dashboard 2 `ui-chart` hospital comparison, a key-information panel, and a detailed ranking table. The selected metric controls the chart and table: III or IV/V, P50 or P95. Hours are converted to minutes for a common chart scale; the table retains original values.
 - Original category I/II status, source timestamp, and a stale-data message after more than 30 minutes.
 - Dashboard updates after successful database writes; collection/database errors are summarized in Debug.
 
-Editable dashboard: `dashboards/hospital-overview.vue`. Regenerate the flow with `python3 scripts/build-hospital-flow.py` after edits.
+The map and metric selector are in `dashboards/hospital-overview.vue`; the chart formatter is generated into the flow, and the comparison summary and values table are in `dashboards/hospital-comparison-info.vue` and `dashboards/hospital-table.vue`. Regenerate the seed flow with `python3 scripts/build-hospital-flow.py` after edits. Existing runtime flows require a Node-RED deploy to load changes.
 
 Not yet implemented: historical line chart, SOP trend chart, automatic retries, collection-run audit records and startup restoration of the last database snapshot. After restart, the dashboard waits for the next successful collection.
 
@@ -152,3 +152,49 @@ The English bar-chart revision receives JavaScript syntax and calculation checks
 Map revision: dependency-free checks cover the 18 reference coordinates, exact matching and unmatched rows, fixed colour bands, metric switching, marker creation, bounds fitting and generated flow syntax. Browser layout and live tile loading remain unverified.
 
 Heatmap implementation: `scripts/hospital-heatmap-query.js` builds the MongoDB aggregation; `scripts/hospital-heatmap-result.js` counts expected Hong Kong time slots; `dashboards/hospital-heatmap.vue` renders the interactive 7×24 grid. Bound expressions and non-numeric statuses are excluded, zero values are retained. The current query groups stored source timestamps without inventing missing history. Add a sourceTime index as the collection grows.
+
+### Regional percentile comparison
+
+The second section uses `dashboards/hospital-regional-comparison.vue`, with Hong Kong Island, Kowloon, and New Territories including Islands grouped by hospital location, not HA service clusters. Tseung Kwan O, Kwai Chung, Tsuen Wan, Tung Chung and Cheung Chau belong to the latter group. Each hospital retains its own P50 and P95; these are not pooled regional percentiles. A teal circle and amber diamond connect the two published estimates on a common minutes scale. Without P25, P75 and extrema this must not be labelled a box plot. The former table and comparison information panel are removed from the generated flow; I/II statuses remain in map hospital details.
+
+Historical support is already configured: `ae-tick` runs every 900 seconds, `ae-save` upserts `ha_ae_snapshots` keyed by source timestamp, and MongoDB uses persistent Docker volumes. Startup triggers `backfill-hospital-ae.js` for a one-time recent 28-day archive import, with job state in `ha_ae_backfill_jobs`. The existing heatmap aggregates those snapshots; it is not a chronological line chart. Retaining snapshots supports a later hospital-specific P50/P95 timeline. Successful archive import and actual snapshot coverage require querying the running database; source configuration alone does not establish data availability. The backfill job skips after its first completed run, so later gaps are not automatically repaired on every restart.
+
+This revision regenerates the importable starter flow only. Existing Node-RED Editor flows in `node-red/data/flows.json` are intentionally preserved; deploy the changed healthcare nodes through the Editor to activate the revised layout.
+
+### Historical line chart beside regional comparison
+
+The regional comparison template now contains a responsive two-column layout, with the hospital-specific P50/P95 timeline on the right. Below 1000 px it stacks vertically. The history selector offers 24 hours or seven days, and shares the triage category with the regional comparison. `hospital-history-query.js` reads seven days of chronological snapshots from `ha_ae_snapshots`; browser selectors filter those snapshots locally. The query runs at startup, component mount, after successful scheduled snapshot writes, and after archive backfill. Values use source timestamps and Hong Kong display time. Missing/non-numeric estimates are not plotted, zero is preserved, and gaps over 30 minutes split paths. Empty history and database failures have explicit states. This adds a historical view without changing snapshot collection or persistence.
+
+Validation: `node tests/hospital-history.cjs` covers query bounds, paired series, missing/zero values, gaps, selectors, retained live/history state, generated function syntax and flow wiring. `node tests/hospital-heatmap.cjs` checks the existing heatmap behavior. Runtime data coverage and browser rendering still require a running deployed Node-RED instance.
+
+### Regional multi-hospital timeline revision
+
+A shared geographic selector filters both comparison panels. The line chart plots every hospital in that region as a separate series; it has no hospital selector. Percentile (P50/P95), window (24 hours/seven days), and triage category controls sit below the timeline. Axes and comparison values display hours, retaining minute precision internally and in tooltip detail. Zero and missing values remain distinct. Hospital colours and dash patterns identify series in a non-interactive legend.
+
+### Separate triage cards and smaller geographic groups
+
+III and IV/V now use separate full-width cards (`ha-chart-urgent`, `ha-chart`), each containing the regional range comparison and regional multi-hospital timeline. Category is fixed per card; percentile and time-window selectors remain below each timeline. The geographic choices are Hong Kong Island (3), Kowloon (4), New Territories East (3), New Territories West (3), Tsuen Wan/Kwai Tsing (2), Tseung Kwan O (1), and Islands (2). Both cards receive live snapshots, history results and history errors. Heatmap follows both cards.
+
+### Independent controls
+
+Removed the overview metric selector and its outgoing metric events, shared selected-metric cache, legacy bar-chart formatting, and unused table/information templates. Live data is now fanned out by `ha-comparison-view` without selecting, sorting or converting a shared metric. The overview sends only a snapshot-restore request. Each comparison card and the heatmap retain independent controls. Map colour and tooltip are fixed to III (Urgent) P50, without a metric selector.
+
+### Seven-day timeline aggregation
+
+Seven-day views automatically bucket each hospital's selected published percentile into Hong Kong local 00:00–03:00, 03:00–06:00, etc. Numeric observations use an exact median per bucket, preserving zero and excluding text/missing values. Empty buckets break lines; partial edge buckets include only observations inside the requested window. Points sit at the visible bucket midpoint, with bucket boundaries and numeric sample counts in tooltips. The vertical scale follows aggregated values. Twenty-four-hour views retain source resolution and 30-minute gap breaks. Aggregating published P95 estimates does not compute a pooled patient P95.
+
+### Simultaneous P50/P95 history
+
+Each hospital now has a solid P50 line, a low-opacity P50–P95 band and a dashed P95 upper edge. The percentile selector is removed; the window selector remains below the chart. Both estimates are aggregated separately into three-hour medians for seven-day views, with individual valid sample counts. Missing endpoints break only their own lines; the band requires both endpoints and P95 >= P50. Missing or inconsistent pairs never produce a filled band. Tooltips report P50, P95 and their difference. All shaded bands render before lines to keep hospital traces visible. The band is not a confidence interval or reconstructed patient distribution.
+
+### Shared region/window controls and window-average comparison
+
+Each card has region and window selectors side by side at the top, with 3h, 12h, 24 Hours and 7 Days options controlling both panels. The left comparison calculates separate arithmetic means of numeric published P50 and P95 estimates from raw snapshots within that window; no-data hospitals retain text and sample counts are available in tooltips. These are observation-weighted means of published estimates, not patient averages or pooled percentiles; seven-day means are not means of three-hour bucket medians. The right chart retains simultaneous P50/P95 bands, source resolution for 3/12/24 hours, and three-hour medians for seven days.
+
+### Hospital focus without filtering
+
+Hospital names in the range comparison and hospital legend are keyboard-accessible toggle buttons. Selecting a hospital highlights it across both panels of that card, while all other data remains rendered at reduced opacity. Clicking again restores all hospitals; selecting another name transfers focus, and changing region resets it. Card focus is independent and window changes preserve it.
+
+### Concise chart guidance
+
+The top control strip carries a short hospital-focus hint; a shared row above both plots explains hours, common filters and the history line/band encoding. A compact full-width footer shows hospital/time-point counts and resolution. Detailed mean/median definitions, confidence-interval distinction, sample counts and gap rules are in a collapsed Chart notes disclosure. The right plot no longer carries stacked explanatory paragraphs.

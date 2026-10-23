@@ -1,10 +1,10 @@
 <template>
-<section class="ha-heatmap-panel">
+<section class="ha-panel ha-heatmap-panel">
   <h2>Weekly waiting-time patterns</h2>
   <p>Median of published estimates by weekday and hour · Last 28 days · Hong Kong time</p>
-  <div class="ha-heatmap-filters">
-    <label>Hospital <select v-model="hospital"><option v-for="name in hospitals" :key="name" :value="name">{{name}}</option></select></label>
-    <label>Metric <select v-model="metric"><option v-for="m in metrics" :key="m.key" :value="m.key">{{m.label}}</option></select></label>
+  <div class="ha-filters">
+    <v-select v-model="hospital" :items="hospitals" label="Hospital" variant="outlined" density="compact" hide-details :disabled="!hospitals.length"></v-select>
+    <v-select v-model="metric" :items="metrics" item-title="label" item-value="key" label="Metric" variant="outlined" density="compact" hide-details></v-select>
   </div>
   <p class="ha-heatmap-summary">{{ hospital || 'Waiting for stored observations' }} · {{ sampleCount }} valid samples · Source window: {{ windowLabel }}</p>
   <div class="ha-heatmap-scroll">
@@ -17,8 +17,7 @@
   </div>
   <p class="ha-heatmap-detail" role="status">{{ describe(selected.day,selected.hour) }}</p>
   <div class="ha-heatmap-legend"><span v-for="item in legend" :key="item.label"><i :style="{background:item.color}"></i>{{item.label}}</span></div>
-  <p class="ha-heatmap-note">Cells show minutes, not patient counts. P95 cells summarize published P95 estimates, not a pooled patient percentile. Coverage compares valid observations with expected 15-minute slots in the query window. Missing or non-numeric values remain empty. A full weekly pattern needs several weeks of collection.</p>
-  <p class="ha-heatmap-note">Query updated: {{ msg?.payload?.generatedAt || 'Awaiting database query' }}</p>
+  <details class="ha-help"><summary>Method &amp; coverage</summary><p class="ha-heatmap-note">Cells show minutes, not patient counts. P95 cells summarize published P95 estimates, not a pooled patient percentile. Coverage compares valid observations with expected 15-minute slots in the query window. Missing or non-numeric values remain empty. A full weekly pattern needs several weeks of collection.</p></details>
 </section>
 </template>
 <script>
@@ -50,5 +49,5 @@ export default {
 }
 </script>
 <style>
-.ha-heatmap-panel{padding:20px;color:#18313e}.ha-heatmap-panel h2{font-size:23px;margin-bottom:8px}.ha-heatmap-panel>p{font-size:13px}.ha-heatmap-filters{display:flex;flex-wrap:wrap;gap:16px;margin:20px 0}.ha-heatmap-filters label{display:grid;gap:6px;font-size:13px}.ha-heatmap-filters select{padding:8px;background:white;border:1px solid #a6bbc3;border-radius:4px;max-width:100%;color:#18313e}.ha-heatmap-scroll{overflow-x:auto}.ha-heatmap{border-collapse:separate;border-spacing:3px;min-width:780px;width:100%;font-size:11px}.ha-heatmap th{font-weight:500;color:#536a76;text-align:center}.ha-heatmap tbody th{text-align:left}.ha-heatmap td{padding:0}.ha-heatmap td button{display:block;width:100%;height:34px;border-radius:3px;color:#18313e;text-align:center}.ha-heatmap td button:hover,.ha-heatmap td button:focus-visible{outline:2px solid #18313e;outline-offset:1px}.ha-heatmap-detail{background:#f2f6f8;padding:12px;min-height:44px;border-radius:5px}.ha-heatmap-legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px}.ha-heatmap-legend i{display:inline-block;width:12px;height:12px;margin-right:5px;border-radius:2px}.ha-heatmap-note{color:#536a76;line-height:1.6}.ha-heatmap-summary{color:#536a76}@media(max-width:600px){.ha-heatmap-panel{padding:8px}}
+.ha-heatmap-panel h2{font-size:20px;margin-bottom:8px}.ha-heatmap-panel>p{font-size:13px}.ha-heatmap-scroll{overflow-x:auto}.ha-heatmap{border-collapse:separate;border-spacing:3px;min-width:780px;width:100%;font-size:11px}.ha-heatmap th{font-weight:500;color:#536a76;text-align:center}.ha-heatmap tbody th{text-align:left}.ha-heatmap td{padding:0}.ha-heatmap td button{display:block;width:100%;height:34px;border-radius:3px;color:#18313e;text-align:center}.ha-heatmap td button:hover,.ha-heatmap td button:focus-visible{outline:2px solid #18313e;outline-offset:1px}.ha-heatmap-detail{background:#f2f6f8;padding:12px;min-height:44px;border-radius:5px}.ha-heatmap-legend{display:flex;flex-wrap:wrap;gap:16px;font-size:12px}.ha-heatmap-legend i{display:inline-block;width:12px;height:12px;margin-right:5px;border-radius:2px}.ha-heatmap-note{color:#536a76;line-height:1.6}.ha-heatmap-summary{color:#536a76}@media(max-width:600px){}
 </style>

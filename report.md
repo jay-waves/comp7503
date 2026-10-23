@@ -14,7 +14,97 @@ Healthcare 仪表板模板位于 `dashboards/`，流程生成脚本为 `scripts/
 
 项目以 Docker Compose 启动 Node-RED 和 MongoDB。首次运行 `bash start.sh` 时，脚本会检查 `node-red/data` 的 UID 是否为 1000、从流程模板初始化 Node-RED runtime flow，并生成本地 MongoDB 账号配置 `.env`；随后构建并启动服务。之后再次运行同一命令即可启动已有环境，MongoDB 数据和 Node-RED 流程保存在持久卷及 `node-red/data/` 中。停止服务可运行 `bash stop.sh`，不会删除数据库卷。
 
-Node-RED 编辑器位于 `http://localhost:1880`，可查看和维护流程；医疗仪表板位于 `http://localhost:1880/dashboard/healthcare/overview`，页面向下滚动可查看历史热图。仪表板不需要登录编辑器。地图底图及 Leaflet 程序库需浏览器访问 OpenStreetMap 和 unpkg.com；若地图资源加载失败，比较图表和表格仍可使用。MongoDB 仅绑定本机端口 `27017`，连接凭据保存在 `.env`。
+Node-RED 编辑器位于 `http://localhost:1880`，可查看和维护流程；医疗仪表板位于 `http://localhost:1880/dashboard/healthcare/overview`，页面向下滚动可查看历史热图。仪表板不需要登录编辑器。地图底图及 Leaflet 程序库需浏览器访问 OpenStreetMap 和 unpkg.com；若地图资源加载失败，比较图表仍可使用。MongoDB 仅绑定本机端口 `27017`，连接凭据保存在 `.env`。
+
+## 原始数据结构
+
+以下为实际响应节选，各保留一条记录。
+
+### 急症室候诊（A&E）
+
+来源：<https://www.ha.org.hk/opendata/aed/aedwtdata2-en.json>
+
+```json
+{
+  "waitTime": [
+    {
+      "hospName": "Alice Ho Miu Ling Nethersole Hospital",
+      "t1wt": "0 minute",
+      "manageT1case": "N",
+      "t2wt": "less than 15 minutes",
+      "manageT2case": "Y",
+      "t3p50": "42 minutes",
+      "t3p95": "68 minutes",
+      "t45p50": "3 hours",
+      "t45p95": "4 hours"
+    }
+  ],
+  "updateTime": "23/10/2026 6:00PM"
+}
+```
+
+| 字段 | 内容 |
+| --- | --- |
+| `updateTime` | 香港本地发布时间，`DD/MM/YYYY h:mmAM/PM` |
+| `waitTime[].hospName` | 医院名称 |
+| `t1wt`、`t2wt` | I、II 类候诊估计或文字状态：`0 minute`、`less than 15 minutes`、`Managing multiple resuscitation cases` |
+| `manageT1case`、`manageT2case` | 来源附带的 I、II 类个案处理标记：`Y`、`N`、`N/A` |
+| `t3p50`、`t3p95` | III 类候诊估计的 P50、P95，字符串，单位为分钟或小时 |
+| `t45p50`、`t45p95` | 合并 IV/V 类候诊估计的 P50、P95，字符串，单位为分钟或小时 |
+
+I、II 类没有 P50/P95；来源不包含患者记录、P25/P75 或完整箱线图所需的极值。
+
+### 专科门诊（SOP）
+
+来源：<https://www.ha.org.hk/opendata/sop/sop-waiting-time-en.json>
+
+```json
+[
+  {
+    "date_id_from": 20250701,
+    "date_id_to": 20260630,
+    "cluster": "Hong Kong East Cluster",
+    "specialty": "Ear, Nose, Throat",
+    "Category": "Urgent Case - Median",
+    "Description": "Median Waiting Time for New Case Booking for Specialist Out-patient Services",
+    "Value": "Less than 1 week"
+  }
+]
+```
+
+- `date_id_from`、`date_id_to`：报告期起止日期，整数 `YYYYMMDD`。
+- `cluster`、`specialty`：医院联网、专科。
+- `Category`、`Description`：统计类别、指标说明。
+- `Value`：原始统计值字符串，保留单位及“少于”等限定。
+
+### 医院目录与坐标
+
+来源：<https://www.ha.org.hk/opendata/facility-hosp.json>
+
+```json
+[
+  {
+    "cluster_eng": "Hong Kong Island Cluster",
+    "institution_eng": "Cheshire Home, Chung Hom Kok",
+    "with_AE_service_eng": "No",
+    "address_eng": "128 Chung Hom Kok Road, HK",
+    "cluster_tc": "香港島醫院聯網",
+    "institution_tc": "舂磡角慈氏護養院",
+    "with_AE_service_tc": "否",
+    "address_tc": "香港舂磡角道128號",
+    "cluster_sc": "香港岛医院联网",
+    "institution_sc": "舂磡角慈氏护养院",
+    "with_AE_service_sc": "否",
+    "address_sc": "香港舂磡角道128号",
+    "latitude": 22.212024,
+    "longitude": 114.1973
+  }
+]
+```
+
+- `cluster_*`、`institution_*`、`with_AE_service_*`、`address_*`：联网、机构名称、是否提供急症服务、地址；`eng` / `tc` / `sc` 分别为英文／繁体中文／简体中文。
+- `latitude`、`longitude`：纬度、经度；应用筛选 `with_AE_service_eng = "Yes"`。
+- `sourceTime`、`fetchedAt`、`lastSeenAt`、`sourceUrl` 为应用存储时添加的元数据，不属于上述原始响应。
 
 ## 数据流与状态流
 
@@ -22,13 +112,14 @@ Node-RED 编辑器位于 `http://localhost:1880`，可查看和维护流程；�
 
 专科门诊数据流每日检查医院管理局数据，将记录写入 `ha_sop_snapshots`；报告周期和记录内容用于区分数据修订。该数据目前保存供后续按地区、专科和报告期分析，尚未纳入已实现的趋势图。医院位置参考数据每周更新并校验坐标，作为地图标记的来源。
 
-状态信息随仪表板数据一并更新：页面显示来源更新时间，并按来源时间计算数据新旧，超过 30 分钟标记为过期。采集、格式检查或数据库错误由 Catch 流程捕获，经摘要后输出到 Node-RED Debug 面板；因此浏览仪表板时若没有数据，应同时查看编辑器右侧 Debug 信息。热图查询状态包括统计时间窗和生成时间，并显示样本数及预期采集时段覆盖率；缺失值保留为空，不当作零。
+各图筛选相互独立，顶部不提供统一指标选择。状态信息随仪表板数据一并更新：页面显示来源更新时间，并按来源时间计算数据新旧，超过 30 分钟标记为过期。采集、格式检查或数据库错误由 Catch 流程捕获，经摘要后输出到 Node-RED Debug 面板；因此浏览仪表板时若没有数据，应同时查看编辑器右侧 Debug 信息。页面统一在顶部显示来源更新时间；各图保留统计时间窗、样本数及预期采集时段覆盖率；缺失值保留为空，不当作零。
 
 ## 图表与交互功能
 
-- **医院地图**：展示有官方坐标的急症室医院。圆点颜色对应当前选择指标的分钟数区间，灰色表示没有可用数值；可缩放、拖动地图。点击标记可查看医院名称、地区、地址、四项 III 类及 IV/V 类指标和 I/II 类原始状态。“Show all hospitals”可重新缩放至全部医院范围。
-- **医院等候时间比较图**：下拉选项可切换 III 类或 IV/V 类的 P50、P95。医院按所选数值由高至低排列；分钟和小时统一换算为分钟比较，标签仍显示来源单位。无法解析的状态值保留但不绘制长度。
-- **已发布数值表**：列出医院、当前所选指标，以及 I 类和 II 类原始状态，方便查看图表未能转为数值的内容。IV/V 类在来源数据中合并，不能拆分。
+- **分诊简介**：解释 I（危殆）、II（危急）、III（紧急）、IV（次紧急）、V（非紧急）的优先级，以及 I–III 类服务目标；服务目标不代表实时达标率。说明 P50/P95 含义及 IV/V 合并口径，链接医管局说明。
+- **医院地图**：展示有官方坐标的急症室医院。圆点颜色固定对应 III（Urgent）类 P50 的分钟数区间，灰色表示没有可用数值；可缩放、拖动地图。点击标记可查看医院名称、地区、地址、四项 III 类及 IV/V 类指标和 I/II 类原始状态。“Show all hospitals”可重新缩放至全部医院范围。
+- **医院等候时间比较图**：III 类和合并 IV/V 类分别使用独立卡片，各有地区选择器；地区分为港岛、九龙、新界东、新界西、荃湾／葵青、将军澳、离岛，以 P50 圆点、区间条和 P95 菱形展示所选时间窗内各医院发布估计的算术平均值；数值统一以小时展示，缺失或文字值不绘制为零。该图是 P50–P95 区间图，不是完整箱线图。
+- **医院历史折线图**：位于比较图右侧，同一张图展示所选地区的全部医院，每家医院以 P50 实线、P50–P95 同色半透明区间带及 P95 虚线上边界同时展示，颜色对应医院图例，不提供单独医院筛选；点击医院名称或图例可同步高亮两图中的该医院，其他医院淡化，再次点击恢复全部，切换地区清除高亮。3h、12h、24 Hours、7 Days 与地区选择并排放在卡片顶部，同时控制两图；不再切换 P50/P95；分流类别按卡片固定，不提供切换；纵轴使用小时；3h、12h、24 小时模式保留原始采样，缺失数值或超过 30 分钟的间隔会断线；7 天模式按香港时间每 3 小时分别取各医院已发布 P50、P95 的中位数，空时段断线，悬停显示样本数；区间带不是置信区间，聚合 P95 不代表患者层面的合并 P95；悬停显示两项估计和差值，窄屏上下排列。详细数值表已移除，I/II 类状态保留在地图详情中。
 - **星期与小时热图**：按医院和四项指标筛选最近 28 天的记录，以香港时间按星期一至星期日及 0–23 时分组，显示每格发布估算值的中位数。悬停、聚焦或点击格子可查看样本数、预期 15 分钟时段数及覆盖率；颜色表示分钟区间，空格代表没有有效数值。热图中的 P95 是已发布 P95 估算值的中位数，并非患者层面的合并 P95。
 
 ## 分析方向与局限

@@ -1,0 +1,20 @@
+/* Shared healthcare tokens and layout; Vuetify owns form and button styling. */
+.ha-panel{--ha-primary:#087e8b;--ha-muted:#617580;--ha-border:#e1e8ec;--ha-soft:#f5f8fa;padding:28px;color:#203642;font-family:inherit;line-height:1.6;min-width:0}
+.ha-panel h1{font-size:28px;letter-spacing:-.7px;line-height:1.25;margin:8px 0}
+.ha-panel h2{font-size:20px;line-height:1.4;margin:0 0 16px;letter-spacing:-.3px}
+.ha-panel h2 small{display:block;font-size:12px;font-weight:400;color:var(--ha-muted);letter-spacing:0;margin-top:4px}
+.ha-panel p{margin:8px 0 16px}
+.ha-panel header p,.ha-panel>p,.ha-note{font-size:12px;color:var(--ha-muted)}
+.ha-panel a,.ha-panel summary{color:var(--ha-primary)}
+.ha-eyebrow{font-size:10px;letter-spacing:1.6px;color:var(--ha-primary);font-weight:600}
+.ha-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(150px,1fr);gap:16px;margin:20px 0;padding:16px;background:var(--ha-soft);border-radius:12px}
+.ha-panel .v-field{border-radius:8px;background:#fff;font-size:13px}
+.ha-panel .v-expansion-panel{background:var(--ha-soft);border:1px solid var(--ha-border);border-radius:10px}
+.ha-panel .v-expansion-panel-title{min-height:48px;font-size:13px}
+.ha-panel .v-expansion-panel-text__wrapper{padding:4px 20px 16px}
+.ha-panel .ha-triage-guide h2{font-size:16px;margin-bottom:8px}
+.ha-panel .ha-note,.ha-help{font-size:12px;line-height:1.7;color:var(--ha-muted)}
+.ha-panel summary{cursor:pointer;font-size:12px}
+.ha-help{margin-top:16px;padding-top:16px;border-top:1px solid var(--ha-border)}
+.ha-panel button:focus-visible,.ha-panel summary:focus-visible{outline:2px solid var(--ha-primary);outline-offset:3px}
+@media(max-width:600px){.ha-panel{padding:16px}.ha-panel h1{font-size:24px}.ha-filters{grid-template-columns:1fr;padding:12px}}
