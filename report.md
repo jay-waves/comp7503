@@ -1,5 +1,11 @@
 # 香港公立医院急症室等候时间分析
 
+## 项目文件与 HKO 示例
+
+Node-RED、Dashboard 2.0 和 MongoDB 通过 Docker Compose 运行。Dashboard 及 MongoDB 节点已在 `node-red/Dockerfile` 中安装。HKO 示例流程位于 `docs/HKO.Flow.dashboard2.json`，可在 Node-RED Editor 中导入并 Deploy；它每五分钟采集一次天文台天气观测，将数据存入 MongoDB，并展示最近 24 小时的气温。旧版流程保留在 `docs/HKO.Flow.json`。示例使用 `${MONGODB_URI}`，导出的流程不包含数据库密码。
+
+Healthcare 仪表板模板位于 `dashboards/`，流程生成脚本为 `scripts/build-hospital-flow.py`，生成的首次启动模板为 `flows/hospital-starter.dashboard2.json`。Node-RED Editor 修改并保存的 `node-red/data/flows.json` 是实际运行流程；重新生成模板不会覆盖它。医院地图使用医院管理局坐标，每周更新并以 `data/hospital-locations.json` 作为备用快照。地图依赖浏览器访问 unpkg.com 与 OpenStreetMap。
+
 ## 选题与目标
 
 本项目关注香港公立医院急症室的服务可及性，利用医院管理局公开数据比较不同医院、时段及分流类别的等候时间估算，观察医疗服务压力的时空差异，为城市医疗资源分析提供参考。数据是官方发布的估算值，不代表患者实际完成的等候时间，也不构成个人医疗建议。
@@ -8,7 +14,7 @@
 
 项目以 Docker Compose 启动 Node-RED 和 MongoDB。首次运行 `bash start.sh` 时，脚本会检查 `node-red/data` 的 UID 是否为 1000、从流程模板初始化 Node-RED runtime flow，并生成本地 MongoDB 账号配置 `.env`；随后构建并启动服务。之后再次运行同一命令即可启动已有环境，MongoDB 数据和 Node-RED 流程保存在持久卷及 `node-red/data/` 中。停止服务可运行 `bash stop.sh`，不会删除数据库卷。
 
-Node-RED 编辑器位于 `http://localhost:1880`，可查看和维护流程；医疗仪表板位于 `http://localhost:1880/healthcare/overview`，页面向下滚动可查看历史热图。仪表板不需要登录编辑器。地图底图及 Leaflet 程序库需浏览器访问 OpenStreetMap 和 unpkg.com；若地图资源加载失败，比较图表和表格仍可使用。MongoDB 仅绑定本机端口 `27017`，连接凭据保存在 `.env`。
+Node-RED 编辑器位于 `http://localhost:1880`，可查看和维护流程；医疗仪表板位于 `http://localhost:1880/dashboard/healthcare/overview`，页面向下滚动可查看历史热图。仪表板不需要登录编辑器。地图底图及 Leaflet 程序库需浏览器访问 OpenStreetMap 和 unpkg.com；若地图资源加载失败，比较图表和表格仍可使用。MongoDB 仅绑定本机端口 `27017`，连接凭据保存在 `.env`。
 
 ## 数据流与状态流
 

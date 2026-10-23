@@ -39,7 +39,7 @@ SOP rows include reporting dates, cluster, specialty, Category, Description and 
 
 ## Current implementation
 
-Run `bash start.sh`. On first startup, the seed flow is copied to `node-red/data/flows.json` and loaded automatically through Docker's `FLOWS=flows.json` setting. Later edits in Node-RED Editor are saved to that persistent runtime file; the generator only updates the seed and does not overwrite runtime edits. A one-time startup flow imports the latest 28 days of official A&E archive snapshots into MongoDB, then refreshes the heatmap. Open http://localhost:1880/healthcare/overview . This uses the installed Dashboard 2 and mongodb4 nodes.
+Run `bash start.sh`. On first startup, the seed flow is copied to `node-red/data/flows.json` and loaded automatically through Docker's `FLOWS=flows.json` setting. Later edits in Node-RED Editor are saved to that persistent runtime file; the generator only updates the seed and does not overwrite runtime edits. A one-time startup flow imports the latest 28 days of official A&E archive snapshots into MongoDB, then refreshes the heatmap. Open http://localhost:1880/dashboard/healthcare/overview . This uses the installed Dashboard 2 and mongodb4 nodes.
 
 Implemented:
 

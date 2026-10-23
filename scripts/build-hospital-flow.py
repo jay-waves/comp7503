@@ -9,7 +9,7 @@ def node(id,type,name,wires=None,**kw):
 client=next(n.copy() for n in example if n['type']=='mongodb4-client');client.update(id='ha-mongo',name='HA / Compose MongoDB',uriTabActive='tab-uri-advanced');nodes.append(client)
 for typ,id in [('ui-base','ha-ui'),('ui-page','ha-page'),('ui-group','ha-group'),('ui-theme','ha-theme')]:
  n=next(n.copy() for n in example if n['type']==typ);n['id']=id
- if typ=='ui-base': n.update(name='HK Healthcare',path='/healthcare')
+ if typ=='ui-base': n.update(name='HK Healthcare',path='/dashboard/healthcare')
  if typ=='ui-page': n.update(name='Hospital waiting times',ui='ha-ui',path='/overview',theme='ha-theme')
  if typ=='ui-group': n.update(name='Live A&E comparisons',page='ha-page')
  nodes.append(n)
@@ -60,12 +60,12 @@ if(Object.keys(hospitals).length===0){node.error('Empty hospital directory',msg)
 flow.set('haLocations',hospitals);
 const view=flow.get('haLastView');if(!view)return null;
 msg.payload={...view,locations:hospitals};return msg;''',outputs=1,noerr=0)
-node('ha-panel','ui-template','Dashboard: Hospital overview',[],info='Receives live A&E data and renders the hospital overview.\n\n[Open Hospital Dashboard](/healthcare/overview)',group='ha-group',page='',ui='',order=1,width=12,height=0,head='',format=(root/'dashboards/hospital-overview.vue').read_text(),storeOutMessages=True,passthru=False,resendOnRefresh=True,templateScope='local')
+node('ha-panel','ui-template','Dashboard: Hospital overview',[],info='Receives live A&E data and renders the hospital overview.\n\n[Open Hospital Dashboard](/dashboard/healthcare/overview)',group='ha-group',page='',ui='',order=1,width=12,height=0,head='',format=(root/'dashboards/hospital-overview.vue').read_text(),storeOutMessages=True,passthru=False,resendOnRefresh=True,templateScope='local')
 node('ha-heatmap-start','inject','Load historical heatmap at startup',[['ha-heatmap-query']],repeat='',once=True,onceDelay='10',props=[{'p':'payload'}],payloadType='date')
 node('ha-heatmap-query','function','Query 28-day weekday and hour medians',[['ha-heatmap-db']],func=(root/'scripts/hospital-heatmap-query.js').read_text(),outputs=1,noerr=0)
 node('ha-heatmap-db','mongodb4','Aggregate historical A&E snapshots',[['ha-heatmap-result']],collection='ha_ae_snapshots',operation='aggregate',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
 node('ha-heatmap-result','function','Attach expected sample coverage',[['ha-heatmap-panel']],func=(root/'scripts/hospital-heatmap-result.js').read_text(),outputs=1,noerr=0)
-node('ha-heatmap-panel','ui-template','Dashboard: Waiting-time heatmap',[],info='Receives the historical aggregation and renders the weekday-by-hour heatmap.\n\n[Open Hospital Dashboard](/healthcare/overview)',group='ha-group',page='',ui='',order=2,width=12,height=0,head='',format=(root/'dashboards/hospital-heatmap.vue').read_text(),storeOutMessages=True,passthru=False,resendOnRefresh=True,templateScope='local')
+node('ha-heatmap-panel','ui-template','Dashboard: Waiting-time heatmap',[],info='Receives the historical aggregation and renders the weekday-by-hour heatmap.\n\n[Open Hospital Dashboard](/dashboard/healthcare/overview)',group='ha-group',page='',ui='',order=2,width=12,height=0,head='',format=(root/'dashboards/hospital-heatmap.vue').read_text(),storeOutMessages=True,passthru=False,resendOnRefresh=True,templateScope='local')
 node('ha-backfill-tick','inject','Backfill last 28 days of A&E history',[['ha-backfill-exec']],repeat='',once=True,onceDelay='30',props=[{'p':'payload'}],payloadType='date')
 node('ha-backfill-exec','exec','Download archives and upsert history',[['ha-backfill-refresh'],['ha-debug'],['ha-debug']],command='node /opt/comp7503/scripts/backfill-hospital-ae.js',addpay=False,append='',useSpawn='false',timer='0',winHide=False,oldrc=False)
 node('ha-backfill-refresh','function','Refresh heatmap after backfill',[['ha-heatmap-query']],func="try{msg.backfill=JSON.parse(msg.payload)}catch(error){node.error('A&E archive backfill failed',msg);return null;} msg.payload=new Date(); return msg;",outputs=1,noerr=0)
