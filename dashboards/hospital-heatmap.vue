@@ -26,12 +26,12 @@ export default {
     hospital:'',metric:'t45p50',selected:{day:1,hour:0},
     days:['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
     metrics:[{key:'t3p50',label:'III · P50'},{key:'t3p95',label:'III · P95'},{key:'t45p50',label:'IV/V · P50'},{key:'t45p95',label:'IV/V · P95'}],
-    legend:[{label:'Under 60 min',color:'#d2eeed'},{label:'60–89 min',color:'#a9dcd7'},{label:'90–119 min',color:'#80c7bf'},{label:'120–179 min',color:'#f3d48a'},{label:'180–359 min',color:'#efbb68'},{label:'360+ min',color:'#d56864'},{label:'No valid data',color:'#edf1f4'}]
+    palette:['#d2eeed','#a9dcd7','#80c7bf','#f3d48a','#efbb68','#d56864']
   }},
   watch:{hospitals:{immediate:true,handler(names){if(!names.includes(this.hospital))this.hospital=names[0]||''}}},
   methods:{
     cell(day,hour){return this.cellIndex[`${day}:${hour}`]},
-    color(cell){return !cell?'#edf1f4':cell.minutes<60?'#d2eeed':cell.minutes<90?'#a9dcd7':cell.minutes<120?'#80c7bf':cell.minutes<180?'#f3d48a':cell.minutes<360?'#efbb68':'#d56864'},
+    color(cell){if(!cell||!Number.isFinite(cell.minutes))return '#edf1f4';const index=this.thresholds.findIndex(limit=>cell.minutes<limit);return this.palette[index<0?5:index]},
     describe(day,hour){
       const cell=this.cell(day,hour), expected=this.msg?.payload?.expected?.[`${day}:${hour}`]||0
       const when=`${this.days[day-1]} ${String(hour).padStart(2,'0')}:00–${String(hour).padStart(2,'0')}:59`
@@ -41,6 +41,8 @@ export default {
     }
   },
   computed:{
+    thresholds(){return this.metric.startsWith('t3')?[10,20,30,45,60]:[60,90,120,180,360]},
+    legend(){const limits=this.thresholds;return this.palette.map((color,i)=>({color,label:i===0?`Under ${limits[0]} min`:i===5?`${limits[4]}+ min`:`${limits[i-1]}–<${limits[i]} min`})).concat([{label:'No valid data',color:'#edf1f4'}])},
     hospitals(){return this.msg?.payload?.hospitals||[]},
     cellIndex(){const index={};for(const row of this.msg?.payload?.cells||[])if(row.hospital===this.hospital&&row.metric===this.metric)index[`${row.day}:${row.hour}`]=row;return index},
     sampleCount(){return Object.values(this.cellIndex).reduce((sum,row)=>sum+row.samples,0)},

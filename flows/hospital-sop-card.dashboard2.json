@@ -1,0 +1,155 @@
+[
+  {
+    "id": "sop-save",
+    "type": "mongodb4",
+    "z": "ha-tab",
+    "name": "Upsert source records",
+    "x": 400,
+    "y": 555,
+    "wires": [
+      [
+        "ha-debug",
+        "ha-sop-query"
+      ]
+    ],
+    "collection": "ha_sop_snapshots",
+    "operation": "bulkWrite",
+    "clientNode": "ha-mongo",
+    "mode": "collection",
+    "output": "toArray",
+    "handleDocId": false
+  },
+  {
+    "id": "ha-sop-panel",
+    "type": "ui-template",
+    "z": "ha-tab",
+    "name": "Dashboard: Specialist outpatient waiting times",
+    "x": 400,
+    "y": 870,
+    "wires": [
+      [
+        "ha-sop-query"
+      ]
+    ],
+    "group": "ha-group",
+    "page": "",
+    "ui": "",
+    "order": 4,
+    "width": 12,
+    "height": 0,
+    "head": "",
+    "format": "<template>\n<section class=\"ha-panel ha-sop\">\n  <h2>Specialist outpatient waiting times · 專科新症輪候<small>By specialty and hospital cluster · Updated quarterly</small></h2>\n  <p v-if=\"error\" role=\"alert\">{{ error }}</p>\n  <p v-else-if=\"!view\">Loading specialist outpatient data…</p>\n  <p v-else-if=\"!view.rows.length\" role=\"status\">No specialist outpatient data available yet.</p>\n  <template v-else>\n    <p>Reporting period · 統計期：{{ date(view.from) }} – {{ date(view.to) }}</p>\n    <div class=\"ha-filters\">\n      <v-select v-model=\"specialty\" :items=\"specialties\" label=\"Specialty · 專科\" variant=\"outlined\" density=\"compact\" hide-details></v-select>\n      <v-select v-model=\"cluster\" :items=\"['All clusters',...clusters]\" label=\"Cluster · 醫院聯網\" variant=\"outlined\" density=\"compact\" hide-details></v-select>\n    </div>\n    <div class=\"ha-sop-table\"><table>\n      <thead><tr><th scope=\"col\">Cluster · 聯網</th><th v-for=\"c in categories\" :key=\"c.key\" scope=\"col\">{{ c.label }}</th></tr></thead>\n      <tbody><tr v-for=\"name in visibleClusters\" :key=\"name\"><th scope=\"row\">{{ name }}</th><td v-for=\"c in categories\" :key=\"c.key\">{{ value(name,c.key) }}</td></tr></tbody>\n    </table></div>\n    <p class=\"ha-note\">Values retain source units (weeks). Stable longest = 90th percentile, not the maximum. These are new appointment booking statistics by cluster, not live hospital queues. Cluster names follow the reporting period.</p>\n  </template>\n  <details class=\"ha-help\"><summary>About this data · 數據說明</summary><p>Urgent and semi-urgent cases show medians; stable cases show median and longest (90th percentile). Quarterly releases may cover overlapping 12-month periods. Data is collected daily; publication is quarterly. Missing values remain unavailable.</p><a href=\"https://data.gov.hk/en-data/dataset/hospital-hadata-sop-waiting-time\" target=\"_blank\" rel=\"noopener noreferrer\">Source: Hospital Authority / DATA.GOV.HK</a></details>\n</section>\n</template>\n<script>\nexport default {\n  data(){return {view:null,error:'',specialty:'',cluster:'All clusters',categories:[{key:'Urgent Case - Median',label:'Urgent · 緊急 (P50)'},{key:'Semi-urgent Case - Median',label:'Semi-urgent · 半緊急 (P50)'},{key:'Stable Case - Median',label:'Stable · 穩定 (P50)'},{key:'Stable Case - The Longest',label:'Stable · 穩定 (P90)'}]}},\n  mounted(){this.send({topic:'ha-sop-request'})},\n  watch:{msg:{immediate:true,handler(msg){if(msg?.topic==='ha-sop-error'){this.error=msg.payload;return}if(msg?.topic!=='ha-sop-data'||!Array.isArray(msg.payload?.rows))return;this.view=msg.payload;this.error='';if(!this.specialties.includes(this.specialty))this.specialty=this.specialties[0]||'';if(!this.clusters.includes(this.cluster))this.cluster='All clusters'}}},\n  computed:{\n    specialties(){return [...new Set((this.view?.rows||[]).map(r=>r.specialty))].sort()},\n    clusters(){return [...new Set((this.view?.rows||[]).filter(r=>r.specialty===this.specialty).map(r=>r.cluster))].sort()},\n    visibleClusters(){return this.cluster==='All clusters'?this.clusters:this.clusters.filter(c=>c===this.cluster)}\n  },\n  methods:{date(value){const s=String(value||'');return s.length===8?`${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`:'Not available'},value(cluster,category){const row=this.view.rows.find(r=>r.specialty===this.specialty&&r.cluster===cluster&&r.Category===category&&/Waiting Time/i.test(r.Description));return row?.Value??'Not available'}}\n}\n</script>\n<style>\n/* Shared healthcare tokens and layout; Vuetify owns form and button styling. */\n.ha-panel{--ha-primary:#087e8b;--ha-muted:#617580;--ha-border:#e1e8ec;--ha-soft:#f5f8fa;padding:28px;color:#203642;font-family:inherit;line-height:1.6;min-width:0}\n.ha-panel h1{font-size:28px;letter-spacing:-.7px;line-height:1.25;margin:8px 0}\n.ha-panel h2{font-size:20px;line-height:1.4;margin:0 0 16px;letter-spacing:-.3px}\n.ha-panel h2 small{display:block;font-size:12px;font-weight:400;color:var(--ha-muted);letter-spacing:0;margin-top:4px}\n.ha-panel p{margin:8px 0 16px}\n.ha-panel header p,.ha-panel>p,.ha-note{font-size:12px;color:var(--ha-muted)}\n.ha-panel a,.ha-panel summary{color:var(--ha-primary)}\n.ha-eyebrow{font-size:10px;letter-spacing:1.6px;color:var(--ha-primary);font-weight:600}\n.ha-filters{display:grid;grid-template-columns:minmax(0,2fr) minmax(150px,1fr);gap:16px;margin:20px 0;padding:16px;background:var(--ha-soft);border-radius:12px}\n.ha-panel .v-field{border-radius:8px;background:#fff;font-size:13px}\n.ha-panel .v-expansion-panel{background:var(--ha-soft);border:1px solid var(--ha-border);border-radius:10px}\n.ha-panel .v-expansion-panel-title{min-height:48px;font-size:13px}\n.ha-panel .v-expansion-panel-text__wrapper{padding:4px 20px 16px}\n.ha-panel .ha-triage-guide h2{font-size:16px;margin-bottom:8px}\n.ha-panel .ha-note,.ha-help{font-size:12px;line-height:1.7;color:var(--ha-muted)}\n.ha-panel summary{cursor:pointer;font-size:12px}\n.ha-help{margin-top:16px;padding-top:16px;border-top:1px solid var(--ha-border)}\n.ha-panel button:focus-visible,.ha-panel summary:focus-visible{outline:2px solid var(--ha-primary);outline-offset:3px}\n@media(max-width:600px){.ha-panel{padding:16px}.ha-panel h1{font-size:24px}.ha-filters{grid-template-columns:1fr;padding:12px}}\n\n\n.ha-sop-table{overflow-x:auto}.ha-sop table{border-collapse:collapse;width:100%;font-size:13px}.ha-sop th,.ha-sop td{text-align:left;padding:14px 12px;border-bottom:1px solid var(--ha-border)}.ha-sop thead{background:var(--ha-soft)}.ha-sop td{min-width:130px}.ha-sop tbody th{font-weight:500;min-width:180px}\n</style>\n",
+    "storeOutMessages": false,
+    "passthru": false,
+    "resendOnRefresh": true,
+    "templateScope": "local"
+  },
+  {
+    "id": "ha-sop-start",
+    "type": "inject",
+    "z": "ha-tab",
+    "name": "Restore specialist outpatient statistics",
+    "x": 400,
+    "y": 905,
+    "wires": [
+      [
+        "ha-sop-query"
+      ]
+    ],
+    "repeat": "",
+    "once": true,
+    "onceDelay": "3",
+    "props": [
+      {
+        "p": "payload"
+      }
+    ],
+    "payloadType": "date"
+  },
+  {
+    "id": "ha-sop-query",
+    "type": "function",
+    "z": "ha-tab",
+    "name": "Read specialist outpatient statistics",
+    "x": 400,
+    "y": 940,
+    "wires": [
+      [
+        "ha-sop-db"
+      ]
+    ],
+    "func": "if (msg.topic && msg.topic !== 'ha-sop-request') return null;\nmsg.payload = [[\n  {$sort: {fetchedAt: -1, _id: 1}},\n  {$group: {_id: {from:'$raw.date_id_from',to:'$raw.date_id_to',cluster:'$raw.cluster',specialty:'$raw.specialty',category:'$raw.Category',description:'$raw.Description'}, raw:{$first:'$raw'}}},\n  {$project: {_id:0, raw:1}}\n], {maxTimeMS:10000}];\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0
+  },
+  {
+    "id": "ha-sop-db",
+    "type": "mongodb4",
+    "z": "ha-tab",
+    "name": "Read persisted specialist outpatient rows",
+    "x": 400,
+    "y": 975,
+    "wires": [
+      [
+        "ha-sop-result"
+      ]
+    ],
+    "collection": "ha_sop_snapshots",
+    "operation": "aggregate",
+    "clientNode": "ha-mongo",
+    "mode": "collection",
+    "output": "toArray",
+    "handleDocId": false
+  },
+  {
+    "id": "ha-sop-result",
+    "type": "function",
+    "z": "ha-tab",
+    "name": "Select latest specialist reporting period",
+    "x": 400,
+    "y": 1010,
+    "wires": [
+      [
+        "ha-sop-panel"
+      ]
+    ],
+    "func": "const rows = (Array.isArray(msg.payload) ? msg.payload : []).map(r=>r.raw).filter(r=>r && r.specialty && r.cluster && r.date_id_from && r.date_id_to);\n// Use one complete published reporting window, not the date of collection.\nrows.sort((a,b)=>Number(b.date_id_to)-Number(a.date_id_to)||Number(b.date_id_from)-Number(a.date_id_from));\nconst latest=rows[0];\nmsg.topic='ha-sop-data';\nmsg.payload={rows:latest ? rows.filter(r=>String(r.date_id_to)===String(latest.date_id_to)&&String(r.date_id_from)===String(latest.date_id_from)) : [], from:latest?.date_id_from,to:latest?.date_id_to};\nreturn msg;\n",
+    "outputs": 1,
+    "noerr": 0
+  },
+  {
+    "id": "ha-sop-catch",
+    "type": "catch",
+    "z": "ha-tab",
+    "name": "Specialist query errors",
+    "x": 400,
+    "y": 1045,
+    "wires": [
+      [
+        "ha-sop-error"
+      ]
+    ],
+    "scope": [
+      "ha-sop-query",
+      "ha-sop-db",
+      "ha-sop-result"
+    ],
+    "uncaught": false
+  },
+  {
+    "id": "ha-sop-error",
+    "type": "function",
+    "z": "ha-tab",
+    "name": "Report specialist statistics unavailable",
+    "x": 400,
+    "y": 1080,
+    "wires": [
+      [
+        "ha-sop-panel"
+      ]
+    ],
+    "func": "msg.topic='ha-sop-error';msg.payload='Specialist outpatient data could not be loaded. Please try again later.';return msg;",
+    "outputs": 1,
+    "noerr": 0
+  }
+]

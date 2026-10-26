@@ -9,7 +9,7 @@ def node(id,type,name,wires=None,**kw):
 client=next(n.copy() for n in example if n['type']=='mongodb4-client');client.update(id='ha-mongo',name='HA / Compose MongoDB',uriTabActive='tab-uri-advanced');nodes.append(client)
 for typ,id in [('ui-base','ha-ui'),('ui-page','ha-page'),('ui-group','ha-group'),('ui-theme','ha-theme')]:
  n=next(n.copy() for n in example if n['type']==typ);n['id']=id
- if typ=='ui-base': n.update(name='HK Healthcare',path='/dashboard/healthcare')
+ if typ=='ui-base': n.update(name='HK Healthcare',path='/dashboard/healthcare',titleBarStyle='hidden')
  if typ=='ui-page': n.update(name='Hospital waiting times',ui='ha-ui',path='/overview',theme='ha-theme')
  if typ=='ui-group': n.update(name='Hospital waiting times',page='ha-page',showTitle=False)
  if typ=='ui-theme': n.update(name='Healthcare',colors=dict(surface='#ffffff',primary='#087e8b',bgPage='#f3f6f8',groupBg='#ffffff',groupOutline='#e1e8ec'),sizes=dict(density='default',pagePadding='20px',groupGap='20px',groupBorderRadius='12px',widgetGap='0px'))
@@ -44,7 +44,7 @@ return msg;
  if tag=='ae': func+="""msg.payload=[{_id:doc._id},{$setOnInsert:doc,$set:{lastSeenAt:now}},{upsert:true}];
 return msg;"""
  node(tag+'-prepare','function','Validate and prepare idempotent write',[[tag+'-save']],func=func,outputs=1,noerr=0)
- node(tag+'-save','mongodb4','Upsert source records',[[tag+'-view']] if tag=='ae' else [['ha-debug']],collection='ha_'+tag+'_snapshots',operation='updateOne' if tag=='ae' else 'bulkWrite',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
+ node(tag+'-save','mongodb4','Upsert source records',[[tag+'-view']] if tag=='ae' else [['ha-debug','ha-sop-query']],collection='ha_'+tag+'_snapshots',operation='updateOne' if tag=='ae' else 'bulkWrite',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
 seed=json.loads((root/'data/hospital-locations.json').read_text())
 node('ae-view','function','Attach hospital locations and update dashboard',[['ha-panel','ha-heatmap-query','ha-comparison-view','ha-history-query']],func='const seed='+json.dumps(seed)+'; flow.set("haLastView",msg.view); msg.payload={...msg.view,locations:flow.get("haLocations") || seed.hospitals}; return msg;',outputs=1,noerr=0)
 node('ha-location-tick','inject','Refresh official hospital locations weekly',[['ha-location-http']],repeat='604800',once=True,onceDelay='2',props=[{'p':'payload'}],payloadType='date')
@@ -69,6 +69,13 @@ comparison_template=styled_template('hospital-regional-comparison.vue')
 for chart_id,category,title,order in [('ha-chart-urgent','t3','III urgent comparison and history',2),('ha-chart','t45','IV/V comparison and history',3)]:
  node(chart_id,'ui-template','Dashboard: '+title,[['ha-history-query']],group='ha-group',page='',ui='',order=order,width=12,height=0,head='',format=comparison_template.replace("category:'t45'",f"category:'{category}'"),storeOutMessages=False,passthru=False,resendOnRefresh=True,templateScope='local')
 node('ha-panel','ui-template','Dashboard: Hospital overview',[['ha-live-query']],info='Receives live A&E data and renders the hospital overview.\n\n[Open Hospital Dashboard](/dashboard/healthcare/overview)',group='ha-group',page='',ui='',order=1,width=12,height=0,head='',format=styled_template('hospital-overview.vue'),storeOutMessages=False,passthru=False,resendOnRefresh=True,templateScope='local')
+node('ha-sop-panel','ui-template','Dashboard: Specialist outpatient waiting times',[['ha-sop-query']],group='ha-group',page='',ui='',order=4,width=12,height=0,head='',format=styled_template('hospital-sop.vue'),storeOutMessages=False,passthru=False,resendOnRefresh=True,templateScope='local')
+node('ha-sop-start','inject','Restore specialist outpatient statistics',[['ha-sop-query']],repeat='',once=True,onceDelay='3',props=[{'p':'payload'}],payloadType='date')
+node('ha-sop-query','function','Read specialist outpatient statistics',[['ha-sop-db']],func=(root/'scripts/hospital-sop-query.js').read_text(),outputs=1,noerr=0)
+node('ha-sop-db','mongodb4','Read persisted specialist outpatient rows',[['ha-sop-result']],collection='ha_sop_snapshots',operation='aggregate',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
+node('ha-sop-result','function','Select latest specialist reporting period',[['ha-sop-panel']],func=(root/'scripts/hospital-sop-result.js').read_text(),outputs=1,noerr=0)
+node('ha-sop-catch','catch','Specialist query errors',[['ha-sop-error']],scope=['ha-sop-query','ha-sop-db','ha-sop-result'],uncaught=False)
+node('ha-sop-error','function','Report specialist statistics unavailable',[['ha-sop-panel']],func="msg.topic='ha-sop-error';msg.payload='Specialist outpatient data could not be loaded. Please try again later.';return msg;",outputs=1,noerr=0)
 node('ha-heatmap-start','inject','Load historical heatmap at startup',[['ha-heatmap-query','ha-history-query']],repeat='',once=True,onceDelay='10',props=[{'p':'payload'}],payloadType='date')
 node('ha-heatmap-query','function','Query 28-day weekday and hour medians',[['ha-heatmap-db']],func=(root/'scripts/hospital-heatmap-query.js').read_text(),outputs=1,noerr=0)
 node('ha-heatmap-db','mongodb4','Aggregate historical A&E snapshots',[['ha-heatmap-result']],collection='ha_ae_snapshots',operation='aggregate',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
@@ -86,9 +93,36 @@ node('ha-history-db','mongodb4','Read historical line chart snapshots',[['ha-his
 node('ha-history-result','function','Format chronological history',[['ha-chart-urgent','ha-chart']],func=(root/'scripts/hospital-history-result.js').read_text(),outputs=1,noerr=0)
 node('ha-history-catch','catch','History query errors',[['ha-history-error']],scope=['ha-history-query','ha-history-db','ha-history-result'],uncaught=False)
 node('ha-history-error','function','Report history unavailable',[['ha-chart-urgent','ha-chart']],func="return {topic:'ha-history-error',payload:'Historical data could not be loaded. Check the database connection.'};",outputs=1,noerr=0)
+# Daily source checks; publication remains surge-period daily / weekly.
+health_seed=[json.loads((root/'data/health'/f'{source}.json').read_text()) for source in ['surge','flu','aed']]
+health_lib=(root/'scripts/health-normalize.js').read_text().split("if(typeof module")[0]
+health_urls={d['source']:d['url'] for d in health_seed}
+for index,(source,url) in enumerate(health_urls.items()):
+ prefix='ha-health-'+source
+ node(prefix+'-tick','inject',source+' daily official source check',[[prefix+'-http']],repeat='86400',once=True,onceDelay=str(20+index*5),props=[{'p':'payload'}],payloadType='date')
+ node(prefix+'-http','http request',source+' official source',[[prefix+'-prepare']],method='GET',ret='txt',url=url,requestTimeout='45000',paytoqs=False,persist=False)
+ prepare=health_lib+'\nconst source='+json.dumps(source)+';const url='+json.dumps(url)+';\n'+(root/'scripts/health-source-prepare.js').read_text()
+ node(prefix+'-prepare','function','Validate '+source+' dates, units and missing values',[[prefix+'-save']],func=prepare,outputs=1,noerr=0)
+ node(prefix+'-save','mongodb4','Persist latest '+source+' source history',[[prefix+'-saved']],collection='ha_health_sources',operation='updateOne',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
+ node(prefix+'-saved','function','Confirm '+source+' write and clear its error',[['ha-health-query']],func=(root/'scripts/health-source-saved.js').read_text(),outputs=1,noerr=0)
+node('ha-health-panel','ui-template','Dashboard: Service demand and surveillance',[['ha-health-query']],group='ha-group',page='',ui='',order=6,width=12,height=0,head='',format=styled_template('health-surveillance.vue'),storeOutMessages=False,passthru=False,resendOnRefresh=True,templateScope='local')
+node('ha-health-seed','function','Publish dated official fallback snapshot',[['ha-health-panel']],func="return {topic:'ha-health-data',payload:"+json.dumps(health_seed)+"};",outputs=1,noerr=0)
+node('ha-health-start','inject','Restore health surveillance at startup',[['ha-health-seed','ha-health-query']],repeat='',once=True,onceDelay='4',props=[{'p':'payload'}],payloadType='date')
+node('ha-health-query','function','Read all health sources',[['ha-health-db']],func="if(msg.topic&&msg.topic!=='ha-health-request')return null;msg.payload=[[{$match:{_id:{$in:['surge','flu','aed']}}},{$project:{_id:0}}],{maxTimeMS:10000}];return msg;",outputs=1,noerr=0)
+node('ha-health-db','mongodb4','Restore published health histories',[['ha-health-result']],collection='ha_health_sources',operation='aggregate',clientNode='ha-mongo',mode='collection',output='toArray',handleDocId=False)
+node('ha-health-result','function','Merge persisted histories with dated initial snapshot',[['ha-health-panel']],func='const seed='+json.dumps(health_seed)+';\n'+(root/'scripts/health-dashboard-result.js').read_text(),outputs=1,noerr=0)
+health_scope=[n['id'] for n in nodes if n['id'].startswith('ha-health-') and n['type'] in ['http request','function','mongodb4']]
+node('ha-health-catch','catch','Health source and database errors',[['ha-health-error']],scope=health_scope,uncaught=False)
+node('ha-health-error','function','Retain dated health data on source failure',[['ha-health-panel','ha-debug']],func="const id=msg.error?.source?.id||'';const source=id.match(/^ha-health-(surge|flu|aed)-/)?.[1]||'database';const errors={...(flow.get('haHealthErrors')||{})};errors[source]=source+': '+(msg.error?.message||'Refresh failed');flow.set('haHealthErrors',errors);return {topic:'ha-health-error',errors};",outputs=1,noerr=0)
 node('ha-catch','catch','Collection and database errors',[['ha-error']],scope=None,uncaught=False)
 node('ha-error','function','Summarize errors',[['ha-debug']],func="msg.payload={message:msg.error?.message || 'Unknown error',source:msg.error?.source?.id,statusCode:msg.statusCode,at:new Date().toISOString()};return msg;",outputs=1,noerr=0)
 node('ha-debug','debug','HA status and errors',[],active=True,tosidebar=True,console=False,tostatus=False,complete='payload',targetType='msg')
 # This is the clean seed for first startup. Never write to node-red/data/flows.json;
 # that persistent runtime copy belongs to edits made in the Node-RED Editor.
 (root/'flows/hospital-starter.dashboard2.json').write_text(json.dumps(nodes,ensure_ascii=False,indent=2)+'\n')
+# Existing installations can import just this card and the updated SOP save wire.
+sop_patch=[n for n in nodes if n['id'].startswith('ha-sop-') or n['id']=='sop-save']
+(root/'flows/hospital-sop-card.dashboard2.json').write_text(json.dumps(sop_patch,ensure_ascii=False,indent=2)+'\n')
+
+health_patch=[n for n in nodes if n['id'].startswith('ha-health-')]
+(root/'flows/health-surveillance.dashboard2.json').write_text(json.dumps(health_patch,ensure_ascii=False,indent=2)+'\n')

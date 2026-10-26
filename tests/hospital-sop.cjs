@@ -1,0 +1,18 @@
+const fs=require('node:fs'),assert=require('node:assert/strict');
+const read=p=>fs.readFileSync(p,'utf8');
+const result=new Function('msg',read('scripts/hospital-sop-result.js'));
+const base={date_id_from:20250701,date_id_to:20260630,specialty:'Medicine',cluster:'Hong Kong East Cluster',Category:'Urgent Case - Median',Description:'Median Waiting Time for New Case Booking for Specialist Out-patient Services',Value:'Less than 1 week'};
+const latest={...base,Category:'Stable Case - The Longest',Description:'The Longest Waiting Time for New Case Booking for Specialist Out-patient Services',Value:'82 weeks'};
+const msg=result({payload:[{raw:{...base,date_id_from:20240701,date_id_to:20250630,Value:'99 weeks'}},{raw:base},{raw:latest}]});
+assert.equal(msg.payload.rows.length,2);assert.equal(msg.payload.to,20260630);
+assert.deepEqual(result({payload:[]}).payload.rows,[]);
+const def=new Function(read('dashboards/hospital-sop.vue').match(/<script>([\s\S]*?)<\/script>/)[1].replace('export default','return'))();
+const c={...def.data()};for(const [k,f]of Object.entries(def.methods))c[k]=f.bind(c);for(const [k,f]of Object.entries(def.computed))Object.defineProperty(c,k,{get:f.bind(c)});
+def.watch.msg.handler.call(c,msg);
+assert.equal(c.specialty,'Medicine');assert.equal(c.value(base.cluster,base.Category),'Less than 1 week');assert.equal(c.value(base.cluster,c.categories[3].key),'82 weeks');assert.equal(c.value('Missing',base.Category),'Not available');assert.equal(c.date(20260630),'2026-06-30');
+def.watch.msg.handler.call(c,{topic:'ha-sop-error',payload:'Unavailable'});assert.equal(c.error,'Unavailable');def.watch.msg.handler.call(c,msg);assert.equal(c.error,'');
+const query=new Function('msg',read('scripts/hospital-sop-query.js'));assert.equal(query({topic:'unrelated'}),null);assert.deepEqual(query({topic:'ha-sop-request'}).payload[0][0].$sort,{fetchedAt:-1,_id:1});
+const nodes=JSON.parse(read('flows/hospital-starter.dashboard2.json')),byId=new Map(nodes.map(n=>[n.id,n]));
+assert(byId.get('sop-save').wires[0].includes('ha-sop-query'));assert.equal(byId.get('ha-sop-db').collection,'ha_sop_snapshots');
+for(const n of nodes)for(const wire of n.wires||[])for(const id of wire)assert(byId.has(id),`Missing target ${id}`);
+console.log('PASS: SOP reporting period, units, P90 mapping, missing/error recovery and flow wiring');

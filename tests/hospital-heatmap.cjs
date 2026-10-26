@@ -30,3 +30,12 @@ assert(c.describe(1,0).includes('no valid observations'));
 c.metric='t3p50';assert.equal(c.cell(5,16).minutes,15);
 c.hospital='B';assert.equal(c.sampleCount,0);
 console.log('PASS: numeric bounds, HK timezone, aggregation, 28-day expected slots, missing/zero cells and metric filters');
+
+// III uses finer fixed bands; changing metric updates both cells and legend.
+c.hospital='A';c.metric='t3p50';assert.deepEqual(c.thresholds,[10,20,30,45,60]);
+assert.equal(c.color({minutes:0}),'#d2eeed');assert.equal(c.color({minutes:10}),'#a9dcd7');assert.equal(c.color({minutes:20}),'#80c7bf');assert.equal(c.color({minutes:30}),'#f3d48a');assert.equal(c.color({minutes:45}),'#efbb68');assert.equal(c.color({minutes:60}),'#d56864');
+assert.equal(c.color({minutes:NaN}),'#edf1f4');assert.equal(c.legend[0].label,'Under 10 min');
+c.metric='t3p95';assert.deepEqual(c.thresholds,[10,20,30,45,60]);
+c.metric='t45p50';assert.deepEqual(c.thresholds,[60,90,120,180,360]);assert.equal(c.color({minutes:30}),'#d2eeed');assert.equal(c.legend[0].label,'Under 60 min');
+const generated=JSON.parse(fs.readFileSync('flows/hospital-starter.dashboard2.json'));assert.equal(generated.find(n=>n.id==='ha-ui').titleBarStyle,'hidden');
+console.log('PASS: III colour boundaries, synchronized legends, unchanged IV/V bands and hidden title bar');
