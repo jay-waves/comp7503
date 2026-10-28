@@ -279,7 +279,15 @@ shown at the top of the page. Each chart retains its statistical time
 window, sample count, and expected collection-interval coverage. Missing
 values remain empty and are not treated as zero.
 
-## Charts and Interactive Features
+The surge data flow checks the Hospital Authority's daily service statistics every 24 hours. The JSON response is validated and normalized to extract A&E first attendances, medical admissions through A&E, and medical and paediatric bed occupancy rates.
+
+The flu data flow checks the Centre for Health Protection (CHP) influenza CSV file every 24 hours. The data is converted into a standardized JSON structure containing weekly influenza positivity rates, influenza subtype counts, influenza-like illness outbreak indicators, and hospital admission rates by age group. 
+
+The aed data flow checks the CHP A&E syndromic surveillance CSV file every 24 hours. The data is processed into weekly consultation rates for influenza-like illness, hand, foot and mouth disease, acute gastroenteritis, and acute conjunctivitis.
+
+These three sources are stored separately in the MongoDB collection ha_health_sources, using surge, flu, and aed as their respective document identifiers. When Node-RED starts, the healthcare surveillance dashboard receives a dated initial dataset and requests any previously stored records from MongoDB. The stored histories are compared with the initial dataset, and the appropriate records are sent to the dashboard. 
+
+## Plot and Interactive Features
 
 -   **Triage guide:** Explains the priority levels of Categories I
     (Critical), II (Emergency), III (Urgent), IV (Semi-urgent), and V
@@ -336,49 +344,29 @@ values remain empty and are not treated as zero.
     that no valid numeric value is available. The P95 shown in the
     heatmap is the median of published P95 estimates, not a combined
     patient-level P95.
-
-## Recent Updates (2026-10-26)
-
--   **New surveillance data and dashboard panel:** Added Hospital
-    Authority surge-period service-demand statistics, Centre for Health
-    Protection influenza data, and A&E syndromic surveillance data. The
-    system checks these sources daily and writes them separately to
-    `ha_health_sources`. Service-demand statistics are published daily
-    only during surge periods, while the other two data sources are
-    published weekly. Each panel displays its statistical date and a
-    historical/delayed-data indicator. The current data extends through
-    2026-08-04, 2026-10-17, and 2026-10-17, respectively.
--   **High-density visualizations:** Added hospital service-load
-    rankings, cluster filters, trend charts, and a 100% occupancy
-    reference line. Influenza charts show positivity-rate trends,
-    historical stacked bars by subtype, and admission rates by age
-    group. The four A&E syndromes are displayed in separate small charts
-    with independent scales and support 13-, 26-, and 52-week windows.
-    Syndrome surveillance is based on diagnostic codes and does not
-    represent laboratory-confirmed case counts.
--   **Influenza doughnut chart:** Shows the latest week's detected
-    counts and proportions for A(H1), A(H3), and B, using the same
-    colours as the historical bar chart. The centre total and percentage
-    denominator are the sum of these three subtype counts and must not
-    be interpreted as all influenza A/B positives. If subtype data is
-    missing, proportions are not drawn; if the total is zero, an empty
-    ring and an explanation are displayed.
--   **Colours and layout:** Category III map and heatmap colours now use
-    fixed ranges of `<10`, `10–<20`, `20–<30`, `30–<45`, `45–<60`, and
-    `60+` minutes to avoid placing most observations in a single colour
-    band. Category IV/V retains its previous ranges, and the legend
-    changes with the selected indicator. The Dashboard top title bar is
-    hidden, while data-update times remain visible inside the cards.
--   **Quality control and validation:** Rejects invalid numeric values,
-    malformed CSV files, duplicate records, and invalid weekly
-    statistical windows. Missing values are not converted to zero.
-    Atomic MongoDB updates prevent older statistical dates from
-    overwriting newer data while allowing revisions within the same
-    statistical period. Errors for each source are recorded and cleared
-    independently. Code tests, Vue template compilation, and MongoDB
-    write validation have been completed. Deployment was performed with
-    a backup through the Node-RED API; browser-based or screenshot-based
-    validation was not performed.
+-   **Service demand trend:** Displays the latest published
+    Hospital Authority service-demand statistics, including A&E first
+    attendances, medical admissions through A&E, and medical bed occupancy.
+    Key indicators show their changes compared with the previous published
+    day when consecutive-day data is available. A line chart displays
+    the Hospital Authority's overall trend for the most recent 28
+    published days. Users can select different indicators, including
+    medical and paediatric bed occupancy, and filter the hospital
+    comparison by cluster. Hospitals are ranked according to the selected
+    indicator and displayed using horizontal bars.
+-   **Influenza activity:** Presents weekly influenza surveillance statistics
+    from the Centre for Health Protection. The panel displays the latest
+    influenza A/B specimen positivity rate, school outbreak count,
+    and all-age hospital admission rate. A line chart shows changes
+    in specimen positivity over the selected trend window. A doughnut
+    chart displays the latest composition of influenza A(H1), A(H3),
+    and B detections, while a stacked bar chart compares their detected
+    counts over the latest 12 weeks.
+-   **A&E syndromic surveillance:** Displays weekly consultation rates
+    for four categories: influenza-like illness, hand, foot and mouth
+    disease, acute gastroenteritis, and acute conjunctivitis. Each category
+    has a separate line chart showing its historical trend, latest value,
+    and change from the previous week. 
 
 ## Analysis Directions and Limitations
 
